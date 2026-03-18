@@ -9,6 +9,8 @@ const [results,setResults] = useState<any[]>([])
 const [loading,setLoading] = useState(false)
 const [generated,setGenerated] = useState(false)
 const [copied,setCopied] = useState("")
+const [error,setError] = useState("")
+const [errorDetail,setErrorDetail] = useState("")
 
 
 const suggestions=[
@@ -64,16 +66,29 @@ async function generate(){
 if(!text) return
 
 setLoading(true)
+setError("")
+setErrorDetail("")
+setResults([])
 
-const res=await fetch("/api/generate",{
+try{
 
+const res = await fetch("/api/generate",{
 method:"POST",
-
+headers:{
+"Content-Type":"application/json"
+},
 body:JSON.stringify({message:text})
-
 })
 
-const data=await res.json()
+const data = await res.json()
+
+if(!res.ok){
+throw new Error(data.error || "API request failed")
+}
+
+if(!data?.result?.gentle){
+throw new Error("AI returned empty response")
+}
 
 setResults([
 { tone:"Gentle", emoji:"💙", text:data.result.gentle },
@@ -81,7 +96,15 @@ setResults([
 { tone:"Savage", emoji:"😈", text:data.result.direct }
 ])
 
-setGenerated(true)
+}catch(err:any){
+
+console.error("AI ERROR:",err)
+
+setError("⚠ AI failed to generate reply")
+
+setErrorDetail(err.message)
+
+}
 
 setLoading(false)
 
@@ -251,18 +274,56 @@ fontSize:14
 <div style={{textAlign:"center",marginTop:30}}>
 
 <button
-
 onClick={generate}
-
 disabled={loading}
-
 className="generate-btn"
+>
+{loading ? "Generating..." : generated ? "Regenerate" : "Generate"}
+</button>
 
+{/* error message */}
+
+{error && (
+
+<div
+style={{
+marginTop:20,
+padding:16,
+background:"#fff1f2",
+border:"1px solid #fecaca",
+borderRadius:10,
+maxWidth:500,
+marginLeft:"auto",
+marginRight:"auto"
+}}
 >
 
-{loading ? "Generating..." : generated ? "Regenerate" : "Generate"}
+<div style={{color:"#b91c1c",fontWeight:600}}>
+{error}
+</div>
 
+<div style={{color:"#7f1d1d",fontSize:13,marginTop:6}}>
+{errorDetail}
+</div>
+
+<button
+onClick={generate}
+style={{
+marginTop:12,
+padding:"8px 16px",
+background:"#6366f1",
+color:"white",
+borderRadius:8,
+border:"none",
+cursor:"pointer"
+}}
+>
+Retry
 </button>
+
+</div>
+
+)}
 
 </div>
 
